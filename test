@@ -1,19 +1,27 @@
 import pandas as pd
 import dask.dataframe as dd
 from dask.diagnostics import ProgressBar
+import time
 
-# Read the Excel file
+# Read the Excel file using pandas
+start_time = time.time()
 xls = pd.ExcelFile('input_file.xlsx')
 sheet_names = xls.sheet_names
 
 # Process each sheet and save as separate Excel files using Dask
-dfs = [dd.read_excel('input_file.xlsx', sheet_name=sheet, engine='openpyxl') for sheet in sheet_names]
+dfs = []
+for sheet_name in sheet_names:
+    df = pd.read_excel('input_file.xlsx', sheet_name=sheet_name, engine='openpyxl')
+    ddf = dd.from_pandas(df, npartitions=1)
+    dfs.append(ddf)
 
 # Save each Dask dataframe as an individual Excel file
 total_sheets = len(sheet_names)
 with ProgressBar() as pbar:
     for i, (sheet_name, df) in enumerate(zip(sheet_names, dfs), 1):
-        df.to_excel(f'{sheet_name}.xlsx', index=False, engine='openpyxl')
+        df.compute().to_excel(f'{sheet_name}.xlsx', index=False, engine='openpyxl')
         pbar.update(1)
+        elapsed_time = time.time() - start_time
+        pbar.set_postfix({'Time': f'{elapsed_time:.2f} sec'})
 
 print("Task completed: All sheets processed and saved.")
