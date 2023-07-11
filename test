@@ -1,21 +1,19 @@
 import pandas as pd
-import xlrd
+import dask.dataframe as dd
+from dask.diagnostics import ProgressBar
 
-# Read the Excel file using xlrd library
-xls = xlrd.open_workbook('InputDataSetLatest.xlsx')
-sheet_names = xls.sheet_names()
+# Read the Excel file
+xls = pd.ExcelFile('input_file.xlsx')
+sheet_names = xls.sheet_names
 
-# Process each sheet and save as separate Excel files
-chunksize = 1000
-for sheet_name in sheet_names:
-    print(f"Processing sheet: {sheet_name}")
-    writer = pd.ExcelWriter(f'{sheet_name}_processed.xlsx', engine='xlsxwriter')
+# Process each sheet and save as separate Excel files using Dask
+dfs = [dd.read_excel('input_file.xlsx', sheet_name=sheet, engine='openpyxl') for sheet in sheet_names]
 
-    # Read the sheet in chunks and write to the new Excel file
-    for start in range(0, xls.sheet_by_name(sheet_name).nrows, chunksize):
-        end = min(start + chunksize, xls.sheet_by_name(sheet_name).nrows)
-        chunk = pd.read_excel('InputDataSetLatest.xlsx', sheet_name=sheet_name, skiprows=start, nrows=end-start)
-        chunk.to_excel(writer, index=False)
+# Save each Dask dataframe as an individual Excel file
+total_sheets = len(sheet_names)
+with ProgressBar() as pbar:
+    for i, (sheet_name, df) in enumerate(zip(sheet_names, dfs), 1):
+        df.to_excel(f'{sheet_name}.xlsx', index=False, engine='openpyxl')
+        pbar.update(1)
 
-    writer.save()
-    print(f"Finished processing sheet: {sheet_name}")
+print("Task completed: All sheets processed and saved.")
