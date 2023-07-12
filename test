@@ -4,8 +4,8 @@ import numpy as np
 month_columns = df_mat_term.columns[df_mat_term.columns.str.startswith('Month')]
 
 # Extract the corresponding start and end values from df_ref
-m_start_values = df_ref.loc[df_ref['Title'].isin(month_columns), 'Start'].values
-m_end_values = df_ref.loc[df_ref['Title'].isin(month_columns), 'End'].values
+m_start_values = df_ref.loc[df_ref['Title'].isin(month_columns), 'Start'].values.astype(df_mat_term['Trade_Exit_BD'].dtype)
+m_end_values = df_ref.loc[df_ref['Title'].isin(month_columns), 'End'].values.astype(df_mat_term['Trade_Exit_BD'].dtype)
 
 # Update the 'Month' columns using np.where and broadcasting
 df_mat_term[month_columns] = np.where(
@@ -19,7 +19,7 @@ df_mat_term[month_columns] = np.where(
 bd_columns = df_mat_term.columns[df_mat_term.columns.str.startswith('BD')]
 
 # Extract the corresponding d_exit values from df_day
-d_exit_values = df_day.loc[df_day['BD'].isin(bd_columns), 'Trade_Exit_BD'].values
+d_exit_values = df_day.loc[df_day['BD'].isin(bd_columns), 'Trade_Exit_BD'].values.astype(df_mat_term['Trade_Exit_BD'].dtype)
 
 # Update the 'BD' columns using np.where and broadcasting
 df_mat_term[bd_columns] = np.where(
