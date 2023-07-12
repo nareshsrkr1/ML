@@ -4,66 +4,22 @@ import numpy as np
 month_columns = df_mat_term.columns[df_mat_term.columns.str.startswith('Month')]
 
 # Extract the corresponding start and end values from df_ref
-m_start_values = df_ref.loc[df_ref['Title'].isin(month_columns), 'Start'].values.astype(df_mat_term['Trade_Exit_BD'].dtype)
-m_end_values = df_ref.loc[df_ref['Title'].isin(month_columns), 'End'].values.astype(df_mat_term['Trade_Exit_BD'].dtype)
+m_start_values = df_ref.loc[df_ref['Title'].isin(month_columns), 'Start'].astype(float).values
+m_end_values = df_ref.loc[df_ref['Title'].isin(month_columns), 'End'].astype(float).values
 
-# Update the 'Month' columns using np.where and broadcasting
-df_mat_term[month_columns] = np.where(
-    (m_start_values <= df_mat_term['Trade_Exit_BD'].values[:, None]) &
-    (df_mat_term['Trade_Exit_BD'].values[:, None] <= m_end_values),
-    df_mat_term['Notional_USD'].values[:, None],
-    0
-)
+# Convert Trade_Exit_BD column to the same data type as m_start_values and m_end_values
+df_mat_term['Trade_Exit_BD'] = df_mat_term['Trade_Exit_BD'].astype(float)
 
-# Create a boolean mask for columns starting with 'BD'
-bd_columns = df_mat_term.columns[df_mat_term.columns.str.startswith('BD')]
-
-# Extract the corresponding d_exit values from df_day
-d_exit_values = df_day.loc[df_day['BD'].isin(bd_columns), 'Trade_Exit_BD'].values.astype(df_mat_term['Trade_Exit_BD'].dtype)
-
-# Update the 'BD' columns using np.where and broadcasting
-df_mat_term[bd_columns] = np.where(
-    d_exit_values == df_mat_term['Trade_Exit_BD'].values[:, None],
-    df_mat_term['Notional_USD'].values[:, None],
-    0
-)
-
-
------------
-import dask.dataframe as dd
-import dask.array as da
-import numpy as np
-
-# Convert pandas DataFrame to Dask DataFrame
-df_mat_term = dd.from_pandas(df_mat_term, npartitions=1)
-
-# Create a boolean mask for columns starting with 'Month'
-month_columns = df_mat_term.columns[df_mat_term.columns.str.startswith('Month')]
-
-# Extract the corresponding start and end values from df_ref
-m_start_values = df_ref.loc[df_ref['Title'].isin(month_columns), 'Start'].values
-m_end_values = df_ref.loc[df_ref['Title'].isin(month_columns), 'End'].values
-
-# Update the 'Month' columns using da.where and broadcasting
-df_mat_term[month_columns] = da.where(
-    (m_start_values <= df_mat_term['Trade_Exit_BD'].values[:, None]) &
-    (df_mat_term['Trade_Exit_BD'].values[:, None] <= m_end_values),
-    df_mat_term['Notional_USD'].values[:, None],
-    0
-)
+# Update the 'Month' columns using broadcasting and vectorized operations
+mask = (m_start_values <= df_mat_term['Trade_Exit_BD'].values[:, None]) & (df_mat_term['Trade_Exit_BD'].values[:, None] <= m_end_values)
+df_mat_term[month_columns] = np.where(mask, df_mat_term['Notional_USD'].values[:, None], 0)
 
 # Create a boolean mask for columns starting with 'BD'
 bd_columns = df_mat_term.columns[df_mat_term.columns.str.startswith('BD')]
 
 # Extract the corresponding d_exit values from df_day
-d_exit_values = df_day.loc[df_day['BD'].isin(bd_columns), 'Trade_Exit_BD'].values
+d_exit_values = df_day.loc[df_day['BD'].isin(bd_columns), 'Trade_Exit_BD'].astype(float).values
 
-# Update the 'BD' columns using da.where and broadcasting
-df_mat_term[bd_columns] = da.where(
-    d_exit_values == df_mat_term['Trade_Exit_BD'].values[:, None],
-    df_mat_term['Notional_USD'].values[:, None],
-    0
-)
-
-# Compute and retrieve the updated Dask DataFrame as a pandas DataFrame
-df_mat_term = df_mat_term.compute()
+# Update the 'BD' columns using broadcasting and vectorized operations
+mask = d_exit_values == df_mat_term['Trade_Exit_BD'].values[:, None]
+df_mat_term[bd_columns] = np.where(mask, df_mat_term['Notional_USD'].values[:, None], 0)
